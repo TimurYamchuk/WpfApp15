@@ -1,8 +1,7 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -10,7 +9,8 @@ namespace WpfApp15
 {
     public partial class MainWindow : Window
     {
-        private CancellationTokenSource _cancellationTokenSource;
+        private Thread _searchThread;
+        private ManualResetEvent _stopEvent = new ManualResetEvent(false);
 
         public MainWindow()
         {
@@ -29,34 +29,29 @@ namespace WpfApp15
                 comboBoxDrives.SelectedIndex = 0;
         }
 
-        private async void ButtonSearch_Click(object sender, RoutedEventArgs e)
+        private void ButtonSearch_Click(object sender, RoutedEventArgs e)
         {
-            _cancellationTokenSource?.Cancel();
-            _cancellationTokenSource = new CancellationTokenSource();
-            var token = _cancellationTokenSource.Token;
+            if (_searchThread != null && _searchThread.IsAlive)
+            {
+                MessageBox.Show("Поиск уже выполняется!");
+                return;
+            }
 
+            _stopEvent.Reset();
             listViewResults.Items.Clear();
             buttonStop.IsEnabled = true;
             buttonStop.Content = "Остановить";
 
-            try
-            {
-                await Task.Run(() => FindFiles(token), token);
-            }
-            catch (OperationCanceledException) { }
-            finally
-            {
-                buttonStop.IsEnabled = false;
-                buttonStop.Content = "Поиск";
-            }
+            _searchThread = new Thread(FindFiles);
+            _searchThread.Start();
         }
 
         private void ButtonStop_Click(object sender, RoutedEventArgs e)
         {
-            _cancellationTokenSource?.Cancel();
+            _stopEvent.Set();
         }
 
-        private void FindFiles(CancellationToken token)
+        private void FindFiles()
         {
             string mask = Dispatcher.Invoke(() => textBoxMask.Text.Trim());
             string disk = Dispatcher.Invoke(() => comboBoxDrives.Text);
@@ -75,22 +70,30 @@ namespace WpfApp15
             {
                 foreach (var filePath in Directory.EnumerateFiles(disk, mask, searchOption))
                 {
-                    if (token.IsCancellationRequested) return;
+                    if (_stopEvent.WaitOne(0)) return;
 
                     if (!string.IsNullOrEmpty(phrase) && !FileContainsPhrase(filePath, phrase))
                         continue;
 
-                    Dispatcher.Invoke(() => listViewResults.Items.Add(new FileInfo(filePath).Name));
+                    var fileInfo = new FileInfo(filePath);
+                    Dispatcher.Invoke(() => listViewResults.Items.Add(new FileModel(
+                        fileInfo.Name, fileInfo.DirectoryName, 
+                        (fileInfo.Length / 1024).ToString(), 
+                        fileInfo.LastWriteTime.ToString())));
                 }
             }
             catch (Exception ex) when (ex is UnauthorizedAccessException || ex is IOException)
             {
                 Dispatcher.Invoke(() => MessageBox.Show("Ошибка доступа к файлу: " + ex.Message));
             }
-        }
-        private void textBoxMask_TextChanged(object sender, TextChangedEventArgs e)
-        {
-  
+            finally
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    buttonStop.IsEnabled = false;
+                    buttonStop.Content = "Поиск";
+                });
+            }
         }
 
         private bool FileContainsPhrase(string filePath, string phrase)
