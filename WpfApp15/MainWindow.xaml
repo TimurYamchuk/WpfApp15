@@ -13,7 +13,7 @@
         <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="5">
 
             <Label Content="Файл:" VerticalAlignment="Center"/>
-            <TextBox x:Name="textBoxMask" Width="120"/>
+            <TextBox x:Name="textBoxMask" Width="120" TextChanged="textBoxMask_TextChanged"/>
 
             <Label Content="Фраза:" VerticalAlignment="Center"/>
             <TextBox x:Name="textBoxPhrase" Width="120"/>
