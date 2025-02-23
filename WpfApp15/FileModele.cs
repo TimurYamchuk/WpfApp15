@@ -1,26 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System;
 
 namespace WpfApp15
 {
-    class FileModel
+    public class FileModel
     {
-        public string Name { get; set; }
-        public string Folder { get; set; }
-        public string Size { get; set; }
-        public string Date { get; set; }
+        public string Name { get; }
+        public string Folder { get; }
+        public long Size { get; }
+        public DateTime LastModified { get; }
 
-        public FileModel(string name, string folder, string size, string data)
+        public FileModel(string name, string folder, long size, DateTime lastModified)
         {
             Name = name;
             Folder = folder;
             Size = size;
-            Date = data;
+            LastModified = lastModified;
         }
-
     }
 }
-
