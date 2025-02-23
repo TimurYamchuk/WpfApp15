@@ -3,109 +3,64 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Windows;
-using System.Windows.Controls;
 
 namespace WpfApp15
 {
     public partial class MainWindow : Window
     {
-        private Thread _searchThread;
+        private Thread _generatorThread;
         private ManualResetEvent _stopEvent = new ManualResetEvent(false);
 
         public MainWindow()
         {
             InitializeComponent();
-            LoadDrives();
-            buttonStop.IsEnabled = false;
         }
 
-        private void LoadDrives()
+        private void StartButton_Click(object sender, RoutedEventArgs e)
         {
-            comboBoxDrives.Items.Clear();
-            foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady))
-                comboBoxDrives.Items.Add(drive.Name);
-
-            if (comboBoxDrives.Items.Count > 0)
-                comboBoxDrives.SelectedIndex = 0;
-        }
-
-        private void ButtonSearch_Click(object sender, RoutedEventArgs e)
-        {
-            if (_searchThread != null && _searchThread.IsAlive)
+            if (_generatorThread != null && _generatorThread.IsAlive)
             {
-                MessageBox.Show("Поиск уже выполняется!");
+                MessageBox.Show("Генерация уже выполняется!");
                 return;
             }
 
             _stopEvent.Reset();
-            listViewResults.Items.Clear();
-            buttonStop.IsEnabled = true;
-            buttonStop.Content = "Остановить";
+            StatusText.Text = "Генерация чисел...";
+            StartButton.IsEnabled = false;
+            StopButton.IsEnabled = true;
 
-            _searchThread = new Thread(FindFiles);
-            _searchThread.Start();
+            _generatorThread = new Thread(GenerateRandomNumbers);
+            _generatorThread.Start();
         }
 
-        private void ButtonStop_Click(object sender, RoutedEventArgs e)
+        private void StopButton_Click(object sender, RoutedEventArgs e)
         {
             _stopEvent.Set();
         }
 
-        private void FindFiles()
+        private void GenerateRandomNumbers()
         {
-            string mask = Dispatcher.Invoke(() => textBoxMask.Text.Trim());
-            string disk = Dispatcher.Invoke(() => comboBoxDrives.Text);
-            bool searchSubDirs = Dispatcher.Invoke(() => checkBoxSubDirs.IsChecked ?? false);
-            string phrase = Dispatcher.Invoke(() => textBoxPhrase.Text.Trim());
+            Random random = new Random();
+            string filePath = "numbers.txt";
 
-            if (string.IsNullOrEmpty(disk) || !Directory.Exists(disk))
+            using (StreamWriter writer = new StreamWriter(filePath))
             {
-                Dispatcher.Invoke(() => MessageBox.Show("Диск не найден или недоступен."));
-                return;
-            }
-
-            var searchOption = searchSubDirs ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-
-            try
-            {
-                foreach (var filePath in Directory.EnumerateFiles(disk, mask, searchOption))
+                for (int i = 0; i < 100; i++)
                 {
-                    if (_stopEvent.WaitOne(0)) return;
+                    if (_stopEvent.WaitOne(0)) break;
 
-                    if (!string.IsNullOrEmpty(phrase) && !FileContainsPhrase(filePath, phrase))
-                        continue;
-
-                    var fileInfo = new FileInfo(filePath);
-                    Dispatcher.Invoke(() => listViewResults.Items.Add(new FileModel(
-                        fileInfo.Name, fileInfo.DirectoryName, 
-                        (fileInfo.Length / 1024).ToString(), 
-                        fileInfo.LastWriteTime.ToString())));
+                    int number = random.Next(1, 1000);
+                    writer.WriteLine(number);
+                    Thread.Sleep(50);
                 }
             }
-            catch (Exception ex) when (ex is UnauthorizedAccessException || ex is IOException)
-            {
-                Dispatcher.Invoke(() => MessageBox.Show("Ошибка доступа к файлу: " + ex.Message));
-            }
-            finally
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    buttonStop.IsEnabled = false;
-                    buttonStop.Content = "Поиск";
-                });
-            }
-        }
 
-        private bool FileContainsPhrase(string filePath, string phrase)
-        {
-            try
+            Dispatcher.Invoke(() =>
             {
-                return File.ReadLines(filePath).Any(line => line.Contains(phrase));
-            }
-            catch
-            {
-                return false;
-            }
+                StatusText.Text = "Генерация завершена.";
+                StartButton.IsEnabled = true;
+                StopButton.IsEnabled = false;
+            });
         }
     }
 }
