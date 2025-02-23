@@ -1,4 +1,4 @@
-﻿<Window x:Class="WpfApp15.MainWindow"
+<Window x:Class="WpfApp15.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Поиск файлов" Height="450" Width="800">
@@ -13,7 +13,7 @@
         <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="5">
 
             <Label Content="Файл:" VerticalAlignment="Center"/>
-            <TextBox x:Name="textBoxMask" Width="120" TextChanged="textBoxMask_TextChanged"/>
+            <TextBox x:Name="textBoxMask" Width="120"/>
 
             <Label Content="Фраза:" VerticalAlignment="Center"/>
             <TextBox x:Name="textBoxPhrase" Width="120"/>
