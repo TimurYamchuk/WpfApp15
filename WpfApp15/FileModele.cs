@@ -20,5 +20,5 @@ namespace WpfApp15
             Size = size;
             Date = data;
         }
-
+    }
     }
